@@ -1,0 +1,161 @@
+openapi: 3.0.3
+
+info:
+  title: Study Materials Assistant API
+  description: API ИИ-помощника по учебным материалам
+  version: 1.0.0
+
+servers:
+  - url: https://study-assistant.example.com/api/v1
+    description: Условный адрес сервера для практической работы
+
+paths:
+  /documents:
+    post:
+      summary: Загрузить учебный материал
+      description: Загружает PDF- или TXT-документ для обработки.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Учебный материал в формате PDF или TXT
+      responses:
+        '201':
+          description: Документ принят на обработку
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - documentId
+                  - status
+                properties:
+                  documentId:
+                    type: string
+                    example: doc-123
+                  status:
+                    type: string
+                    example: processing
+        '400':
+          description: Некорректный запрос или файл не передан
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: FILE_REQUIRED
+                  message:
+                    type: string
+                    example: Необходимо прикрепить файл
+        '415':
+          description: Формат файла не поддерживается
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: UNSUPPORTED_FILE_FORMAT
+                  message:
+                    type: string
+                    example: Поддерживаются только PDF и TXT
+
+  /documents/{documentId}:
+    get:
+      summary: Получить статус документа
+      description: Возвращает сведения о загруженном документе и статус его обработки.
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          description: Идентификатор документа
+          schema:
+            type: string
+          example: doc-123
+      responses:
+        '200':
+          description: Информация о документе найдена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documentId:
+                    type: string
+                    example: doc-123
+                  filename:
+                    type: string
+                    example: lecture.pdf
+                  status:
+                    type: string
+                    example: ready
+        '404':
+          description: Документ не найден
+
+  /documents/{documentId}/questions:
+    post:
+      summary: Задать вопрос по документу
+      description: Формирует ответ на основе загруженного материала и возвращает источник.
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          description: Идентификатор документа
+          schema:
+            type: string
+          example: doc-123
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - question
+              properties:
+                question:
+                  type: string
+                  example: Какие основные этапы описаны в лекции?
+      responses:
+        '200':
+          description: Ответ сформирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnswerResponse'
+        '404':
+          description: Документ не найден
+        '422':
+          description: Документ ещё не обработан или в нём недостаточно информации для ответа
+        '503':
+          description: ИИ-компонент временно недоступен
+
+components:
+  schemas:
+    AnswerResponse:
+      type: object
+      required:
+        - answer
+        - sourcePage
+        - sourceExcerpt
+      properties:
+        answer:
+          type: string
+          example: В лекции описаны три основных этапа...
+        sourcePage:
+          type: integer
+          example: 4
+        sourceExcerpt:
+          type: string
+          example: Первый этап включает подготовку исходных данных...
